@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vista de documento</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #121212;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Estilo de la franja del mensaje */
+    #aviso-global {
+      display: none;
+      background-color: #1f2937;
+      color: #ffffff;
+      padding: 10px 16px;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      border-bottom: 1px solid #374151;
+    }
+    iframe {
+      width: 100%;
+      flex: 1;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- AQUÍ ES DONDE SE PROYECTA EL MENSAJE EN PANTALLA -->
+  <div id="aviso-global">
+    <span id="aviso-texto"></span>
+  </div>
+
+  <iframe src="imagen.pdf"></iframe>
+
+  <script>
+    fetch('./aviso.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        const caja = document.getElementById('aviso-global');
+        const texto = document.getElementById('aviso-texto');
+
+        // Aquí se lee el "texto" de aviso.json y se mete dentro de <span id="aviso-texto">
+        if (data.activo && data.texto && data.texto.trim() !== '') {
+          texto.textContent = data.texto;
+          caja.style.display = 'block';
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
