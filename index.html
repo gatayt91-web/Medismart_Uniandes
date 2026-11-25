@@ -22,7 +22,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
       padding: 20px 14px;
       font-family: system-ui, -apple-system, sans-serif;
@@ -32,15 +32,15 @@
       display: none;
       width: 100%;
       max-width: 520px;
-      background-color: #fff3cd;
-      color: #664d03;
-      border: 1px solid #ffecb5;
+      background-color: #22252a;
+      color: #ffffff;
       border-radius: 0;
       padding: 10px 14px;
       margin-bottom: 12px;
       font-size: 0.85rem;
       font-weight: 600;
       text-align: center;
+      letter-spacing: 0.3px;
     }
 
     .visor-pdf {
@@ -149,7 +149,7 @@
 
     cargarAviso();
     renderizarPDF().catch(err => {
-      contenedorPrincipal.innerHTML = '<p style="padding:20px;color:#b00;">No se pudo cargar imagen.pdf. Verifica que el archivo esté subido en el mismo repositorio.</p>';
+      contenedorPrincipal.innerHTML = '<p style="padding:20px;color:#b00;">No se pudo cargar imagen.pdf. Verifica que el archivo esté subido en el repositorio.</p>';
       console.error(err);
     });
   </script>
