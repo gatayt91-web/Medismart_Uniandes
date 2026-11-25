@@ -3,59 +3,157 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vista de documento</title>
+  <title>Documento</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
   <style>
+    :root {
+      --fondo-pagina: #eceef1;
+      --fondo-pdf: #ffffff;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
+
     body {
-      background-color: #121212;
+      background-color: var(--fondo-pagina);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px 14px;
+      font-family: system-ui, -apple-system, sans-serif;
     }
-    /* Estilo de la franja del mensaje */
-    #aviso-global {
+
+    /* Banner superior controlado por aviso.json */
+    #aviso-banner {
       display: none;
-      background-color: #1f2937;
-      color: #ffffff;
-      padding: 10px 16px;
-      text-align: center;
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      border-bottom: 1px solid #374151;
-    }
-    iframe {
       width: 100%;
-      flex: 1;
-      border: none;
+      max-width: 520px;
+      background-color: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+      border-radius: 0;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* Contenedor del PDF en blanco puro y esquinas rectas */
+    .visor-pdf {
+      background-color: var(--fondo-pdf);
+      border-radius: 0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .pagina-contenedor {
+      position: relative;
+      width: 100%;
+      border-radius: 0;
+      background-color: var(--fondo-pdf);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background-color: var(--fondo-pdf);
+    }
+
+    .textLayer {
+      opacity: 1;
+    }
+
+    .textLayer ::selection {
+      background: rgba(0, 123, 255, 0.3);
     }
   </style>
 </head>
 <body>
-  <!-- AQUÍ ES DONDE SE PROYECTA EL MENSAJE EN PANTALLA -->
-  <div id="aviso-global">
-    <span id="aviso-texto"></span>
-  </div>
 
-  <iframe src="imagen.pdf"></iframe>
+  <div id="aviso-banner"></div>
+  <div class="visor-pdf" id="visor-pdf"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
-    fetch('./aviso.json?t=' + Date.now(), { cache: 'no-store' })
-      .then(res => res.json())
-      .then(data => {
-        const caja = document.getElementById('aviso-global');
-        const texto = document.getElementById('aviso-texto');
+    const urlPdf = 'imagen.pdf';
+    const urlAviso = 'aviso.json';
 
-        // Aquí se lee el "texto" de aviso.json y se mete dentro de <span id="aviso-texto">
-        if (data.activo && data.texto && data.texto.trim() !== '') {
-          texto.textContent = data.texto;
-          caja.style.display = 'block';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const contenedorPrincipal = document.getElementById('visor-pdf');
+    const bannerAviso = document.getElementById('aviso-banner');
+
+    async function cargarAviso() {
+      try {
+        const respuesta = await fetch(`${urlAviso}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!respuesta.ok) return;
+        const datos = await respuesta.json();
+        if (datos.activo && datos.texto) {
+          bannerAviso.textContent = datos.texto;
+          bannerAviso.style.display = 'block';
         }
-      })
-      .catch(() => {});
+      } catch (e) {
+        console.error('Error al cargar aviso.json:', e);
+      }
+    }
+
+    async function renderizarPDF() {
+      const pdf = await pdfjsLib.getDocument(`${urlPdf}?t=${Date.now()}`).promise;
+
+      for (let numPagina = 1; numPagina <= pdf.numPages; numPagina++) {
+        const pagina = await pdf.getPage(numPagina);
+        const viewportOriginal = pagina.getViewport({ scale: 2 });
+
+        const divPagina = document.createElement('div');
+        divPagina.className = 'pagina-contenedor';
+        contenedorPrincipal.appendChild(divPagina);
+
+        const canvas = document.createElement('canvas');
+        const contexto = canvas.getContext('2d');
+        canvas.width = viewportOriginal.width;
+        canvas.height = viewportOriginal.height;
+        divPagina.appendChild(canvas);
+
+        await pagina.render({
+          canvasContext: contexto,
+          viewport: viewportOriginal
+        }).promise;
+
+        const divTexto = document.createElement('div');
+        divTexto.className = 'textLayer';
+        divPagina.appendChild(divTexto);
+
+        const escalaPantalla = divPagina.clientWidth / viewportOriginal.width;
+        const viewportTexto = pagina.getViewport({ scale: 2 * escalaPantalla });
+        divTexto.style.setProperty('--scale-factor', 2 * escalaPantalla);
+
+        const contenidoTexto = await pagina.getTextContent();
+        pdfjsLib.renderTextLayer({
+          textContentSource: contenidoTexto,
+          container: divTexto,
+          viewport: viewportTexto,
+          textDivs: []
+        });
+      }
+    }
+
+    cargarAviso();
+    renderizarPDF().catch(err => {
+      contenedorPrincipal.innerHTML = '<p style="padding:20px;color:#b00;">No se pudo cargar imagen.pdf. Verifica que el archivo esté subido en el mismo repositorio.</p>';
+      console.error(err);
+    });
   </script>
 </body>
 </html>
